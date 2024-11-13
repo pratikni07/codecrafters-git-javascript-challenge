@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const GitClient = require('./git/client');
 const { CatFileCommand } = require("./git/commands/cat-file");
-const { HashObjectCommand } = require("./git/commands");
+const { HashObjectCommand,LsTreeCommand,WriteTreeCommand } = require("./git/commands");
 
 console.error("Logs from your program will appear here!");
 
@@ -18,6 +18,12 @@ switch (command) {
         break;
     case "hash-object":
         handleHashObjectCommand();
+        break;
+    case "ls-tree":
+        handleLsTreeCommand();
+        break;
+    case "write-tree":
+        handleWriteTreeCommand();
         break;
     default:
         throw new Error(`Unknown command ${command}`);
@@ -72,5 +78,23 @@ function handleHashObjectCommand() {
   
     const command = new HashObjectCommand(flag, filepath);
     gitClient.run(command);
-  }
+}
+
+function handleLsTreeCommand(){
+   let flag = process.argv[3];
+   let sha = process.argv[4];
+
+   if(!sha && flag === "--name-only") return;
+
+   if(!sha){
+    sha = flag;
+    flag=null;
+   }
+   const command = new LsTreeCommand(flag,sha)
+   gitClient.run(command )
+
+}
   
+function handleWriteTreeCommand (){
+    const command = new WriteTreeCommand()
+}

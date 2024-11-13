@@ -25,7 +25,7 @@ class CatFileCommand {
                 
                 const fileContents = fs.readFileSync(completePath);
                 const decompressedContents = zlib.inflateSync(fileContents);
-                const output = decompressedContents.toString();
+                const output = decompressedContents.toString().split("\x00")[1];
                 console.log(output);
                 return output;
             }
