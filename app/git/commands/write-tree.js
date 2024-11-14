@@ -1,6 +1,7 @@
 const path = require('path')
 const fs = require('fs')
 const crypto = require("crypto")
+const zlib  = require("zlib")
 function writeFileBlob(currentPath){
     const contents  = fs.readFileSync(currentPath)
     const len = contents.length;
@@ -39,8 +40,11 @@ class WriteTreeCommand {
                 const currenPath = path.join(basePath, dirContent)
                 const stat = fs.statSync(currenPath)
                 if(stat.isDirectory()){
-                    console.log(`\n${dirContent}`)
-                    recursiveCreateTree(currenPath)
+                    const sha = recursiveCreateTree(currenPath)
+                    if(sha){
+                        result.push({mode:'40000', basename:path.basename(currenPath),sha})
+                        console.log(`  ${sha}`)
+                    }
                 }else if(stat.isFile()){
                     const sha = writeFileBlob(currenPath)
                     result.push({mode:'100644', basename:path.basename(currenPath),sha})
@@ -49,11 +53,37 @@ class WriteTreeCommand {
                 
             }
 
+            if(dirCintents.length === 0 || result.length===0) return null;
+            const treeData = result.reduce((acc,current)=>{
+                const {mode,basename, sha } = current;
+                return Buffer.concat([
+                    acc,
+                    Buffer.from(`${mode} ${basename}\0`),
+                    Buffer.from(sha,"hex"),
+
+                ])
+            }, Buffer.alloc[0])
+            
+            const tree = Buffer.concat([Buffer.from(`tree ${treeData.length}\0`),treeData])
+
+            const hash = crypto.createHash('sha1').update(tree).digest('hex')
+
+            
+            const folder = hash.slice(0, 2);
+            const file = hash.slice(2);
+            const treeFolderPath = path.join(process.cwd(), '.git','objects',folder)
+
+            if (!fs.existsSync(treeFolderPath)) 
+                fs.mkdirSync(treeFolderPath );
+            const compressed = zlib.deflateSync(tree)
+            fs.writeFileSync(path.join(treeFolderPath,file),compressed)
+
+
+            return hash ;
         }
 
-        recursiveCreateTree(process.cwd());
-        // 2. If item is dir , do it again for inner dir 
-        // 3. if file create blob , write hash and file to object and write entry to tree 
+        const sha = recursiveCreateTree(process.cwd());
+        console.log(sha)
 
     }
 }
